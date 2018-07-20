@@ -1,8 +1,13 @@
-console.log('hola mundo!');
-const noCambia = "Leonidas";
+(async function load() {
 
-let cambia = "@LeonidasEsteban"
+    async function getData(url) {
+        const response = await fetch(url);
+        const data= await response.json()
+        return data;
+    }
 
-function cambiarNombre(nuevoNombre) {
-  cambia = nuevoNombre
-}
+    const actionList= await getData('https://yts.am/api/v2/list_movies.json?genre=action')
+    const dramaList= await getData('https://yts.am/api/v2/list_movies.json?genre=drama')
+    const animationList= await getData('https://yts.am/api/v2/list_movies.json?genre=animation')
+    console.log(actionList,dramaList,animationList);
+})()
