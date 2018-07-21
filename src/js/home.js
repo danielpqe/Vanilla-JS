@@ -10,4 +10,6 @@
     const dramaList= await getData('https://yts.am/api/v2/list_movies.json?genre=drama')
     const animationList= await getData('https://yts.am/api/v2/list_movies.json?genre=animation')
     console.log(actionList,dramaList,animationList);
+
+
 })()
