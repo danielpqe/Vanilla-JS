@@ -5,13 +5,15 @@
 // animation
     async function getData(url) {
         const response = await fetch(url);
-        const data = await response.json()
-        return data;
+        const data = await response.json();
+        if(data.data.movie_count>0){
+            return data;
+        }
+        throw new Error('No se encontró ningun resultado');
     }
     const $form = document.getElementById('form');
     const $home = document.getElementById('home');
     const $featuringContainer = document.getElementById('featuring');
-
 
     function setAttributes($element, attributes) {
         for (const attribute in attributes) {
@@ -48,20 +50,25 @@
         $featuringContainer.append($loader);
 
         const data = new FormData($form);
-        const {
-            data: {
-                movies: pelis
-            }
-        } = await getData(`${BASE_API}list_movies.json?limit=1&query_term=${data.get('name')}`)
+        try {
+            const {
+                data: {
+                    movies: pelis
+                }
+            } = await getData(`${BASE_API}list_movies.json?limit=1&query_term=${data.get('name')}`)
 
-        const HTMLString = featuringTemplate(pelis[0]);
-        $featuringContainer.innerHTML = HTMLString;
+            const HTMLString = featuringTemplate(pelis[0]);
+            $featuringContainer.innerHTML = HTMLString;
+
+        }catch (e) {
+            alert(e.message);
+            $loader.remove();
+            $home.classList.remove('search-active')
+        }
+
+
     })
 
-    const actionList = await getData(`${BASE_API}list_movies.json?genre=action`)
-    const dramaList = await getData(`${BASE_API}list_movies.json?genre=drama`)
-    const animationList = await getData(`${BASE_API}list_movies.json?genre=animation`)
-    console.log(actionList, dramaList, animationList)
     function videoItemTemplate(movie, category) {
         return (
             `<div class="primaryPlaylistItem" data-id="${movie.id}" data-category=${category}>
@@ -92,24 +99,39 @@
             const HTMLString = videoItemTemplate(movie, category);
             const movieElement = createTemplate(HTMLString);
             $container.append(movieElement);
+            const image=movieElement.querySelector('img')
+            image.addEventListener('load',(event)=>{
+                event.srcElement.classList.add('fadeIn');
+            })
             addEventClick(movieElement);
         })
     }
+
+    async function cacheExist(category) {
+        const listName = `${category}List`
+        const cacheList = window.localStorage.getItem(listName);
+        if (cacheList){
+            return JSON.parse(cacheList)
+        }
+        const {data:{movies:data}} = await getData(`${BASE_API}list_movies.json?genre=${category}`);
+        window.localStorage.setItem(listName,JSON.stringify(data));
+
+        return data;
+    }
+    const actionList= await cacheExist('action');
+    // window.localStorage.setItem('actionList',JSON.stringify(actionList));
     const $actionContainer = document.querySelector('#action');
-    renderMovieList(actionList.data.movies, $actionContainer, 'action');
+    renderMovieList(actionList, $actionContainer, 'action');
 
+    const dramaList = await cacheExist('drama');
+    // window.localStorage.setItem('dramaList',JSON.stringify(dramaList));
     const $dramaContainer = document.getElementById('drama');
-    renderMovieList(dramaList.data.movies, $dramaContainer, 'drama');
+    renderMovieList(dramaList, $dramaContainer, 'drama');
 
+    const animationList = await cacheExist('animation');
+    // window.localStorage.setItem('animationList',JSON.stringify(animationList));
     const $animationContainer = document.getElementById('animation');
-    renderMovieList(animationList.data.movies, $animationContainer, 'animation');
-
-
-
-
-
-
-
+    renderMovieList(animationList, $animationContainer, 'animation');
 
 // const $home = $('.home .list #item');
     const $modal = document.getElementById('modal');
@@ -120,12 +142,32 @@
     const $modalImage = $modal.querySelector('img');
     const $modalDescription = $modal.querySelector('p');
 
+    function findById(list,id) {
+      return  list.find(movie=> movie.id===parseInt(id,10))
+    }
+
+    function findMovie(id,category) {
+        switch (category){
+            case "action":{
+                return findById(actionList,id)
+            }
+            case 'drama':{
+                return findById(dramaList,id)            }
+            default :{
+                return findById(animationList,id)            }
+        }
+    }
+
     function showModal($element) {
         $overlay.classList.add('active');
         $modal.style.animation = 'modalIn .8s forwards';
         const id = $element.dataset.id;
         const category = $element.dataset.category;
+        const data=findMovie(id,category)
 
+        $modalTitle.textContent=data.title;
+        $modalImage.setAttribute('src',data.medium_cover_image);
+        $modalDescription.textContent =data.description_full;
     }
 
     $hideModal.addEventListener('click', hideModal);
